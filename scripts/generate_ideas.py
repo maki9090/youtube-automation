@@ -2,51 +2,64 @@
 
 import os
 import pandas as pd
-import openai
+from openai import OpenAI
+import csv, time
 
-# 0) API 키
-openai.api_key = os.getenv("OPENAI_API_KEY")
-if not openai.api_key:
-    raise RuntimeError("OPENAI_API_KEY가 없습니다.")
+# ── 설정 ──
+api_key = os.getenv("OPENAI_API_KEY")
+if not api_key:
+    raise RuntimeError("OPENAI_API_KEY 환경변수가 필요합니다.")
+client = OpenAI(api_key=api_key)
 
-# 0-1) 경로 설정
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-CLUSTER_LABELS_CSV = os.path.join(BASE_DIR, "data", "cluster_labels.csv")
-IDEAS_CSV = os.path.join(BASE_DIR, "data", "ideas.csv")
+KEYWORD_THEMES_CSV = os.path.join(BASE_DIR, "data", "keyword_themes.csv")
+IDEAS_CSV          = os.path.join(BASE_DIR, "data", "ideas.csv")
 
-# 1) 클러스터 레이블 로드
-df = pd.read_csv(CLUSTER_LABELS_CSV)  
-# 예상 컬럼: Cluster, Top Keywords, Label
+# 1) 키워드·테마 로드
+df = pd.read_csv(KEYWORD_THEMES_CSV)  # 컬럼: Keyword, Theme1, Theme2
+keywords = df["Keyword"].tolist()
+themes1  = df["Theme1"].tolist()
+themes2  = df["Theme2"].fillna("").tolist()
 
 results = []
+batch_size = 10
 
-for _, row in df.iterrows():
-    label       = row["Label"]
-    keywords    = row["Top Keywords"]
-    prompt = f"""
-You are a YouTube content strategist.
-Cluster name: "{label}"
-Top keywords: {keywords}
-
-1) 이 클러스터에 맞는 숏폼 영상용 제목 3개를 한국어로 제안해 주세요.
-2) 각 제목별로 1~2줄 분량의 스크립트 개요를 한국어로 써 주세요.
-"""
-    resp = openai.ChatCompletion.create(
-        model="gpt-4o-mini",
-        messages=[{"role":"system","content":"You are a helpful assistant."},
-                  {"role":"user",  "content":prompt}],
-        temperature=0.8,
-        max_tokens=500
+# 2) 배치 단위 요청
+for i in range(0, len(keywords), batch_size):
+    batch_keys   = keywords[i : i + batch_size]
+    batch_th1    = themes1 [i : i + batch_size]
+    batch_th2    = themes2 [i : i + batch_size]
+    print(f"▶ 배치 {i//batch_size+1} 시작: 키워드 {i+1}~{min(i+batch_size, len(keywords))}")
+    
+    prompt = "다음 키워드와 테마에 맞게, 각 키워드별로\n" \
+             "1) 숏폼 영상용 제목 1개\n" \
+             "2) 1줄 스크립트 아이디어 1개\n" \
+             "CSV 형식(키워드,제목,스크립트)으로 출력해 주세요.\n\n"
+    for k, t1, t2 in zip(batch_keys, batch_th1, batch_th2):
+        prompt += f"{k} / 테마1: {t1}" + (f", 테마2: {t2}" if t2 else "") + "\n"
+    
+    resp = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role":"user", "content":prompt}],
+        temperature=0.7,
+        max_tokens=300 * batch_size // 3
     )
     text = resp.choices[0].message.content.strip()
-    results.append({
-        "Cluster":        row["Cluster"],
-        "Label":          label,
-        "Top Keywords":   keywords,
-        "Generated Idea": text
-    })
+    
+    # CSV 파싱
+    reader = csv.reader(text.splitlines())
+    for row in reader:
+        if len(row) >= 3:
+            results.append({
+                "Keyword":   row[0],
+                "Title":     row[1],
+                "Script":    row[2]
+            })
+    print(f"✔ 배치 {i//batch_size+1} 완료")
+    time.sleep(1)
 
-# 2) 결과 저장
+# 3) 결과 저장
 out = pd.DataFrame(results)
+os.makedirs(os.path.dirname(IDEAS_CSV), exist_ok=True)
 out.to_csv(IDEAS_CSV, index=False, encoding="utf-8-sig")
-print(f"✅ Saved ideas for {len(results)} clusters to {IDEAS_CSV}")
+print(f"✅ 전체 아이디어 생성 완료 → {IDEAS_CSV}")

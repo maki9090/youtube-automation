@@ -2,85 +2,65 @@
 
 import os
 import csv
-import feedparser
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-from datetime import datetime, timezone
+from datetime import datetime
+from serpapi import GoogleSearch
 
-# ────────────────────────────────────────────────────────────
-# 설정 파트: 환경마다 바꿀 것은 여기에만!
-from os.path import abspath, join, dirname
+# ── 설정 ──
+BASE_DIR     = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+DATA_DIR     = os.path.join(BASE_DIR, "data")
+TRENDS_CSV   = os.path.join(DATA_DIR, "trends.csv")
+KEYWORDS_CSV = os.path.join(DATA_DIR, "keywords.csv")
 
-# 프로젝트 루트 경로 계산 (scripts/ 아래에서 한 단계 위)
-BASE_DIR = abspath(join(dirname(__file__), ".."))
+# 지역 설정: "KR" 또는 "US"
+GEO     = "KR"
+HL      = "ko"  # 언어 코드: 한국어
+API_KEY = os.getenv("SERPAPI_KEY")
+if not API_KEY:
+    raise RuntimeError("환경변수 SERPAPI_KEY가 설정되어 있지 않습니다.")
 
-# credentials 폴더 안의 서비스 계정 JSON
-SERVICE_ACCOUNT_FILE = join(BASE_DIR, "credentials", "service_account.json")
-
-SPREADSHEET_NAME     = "YouTube auto"
-WORKSHEET_NAME       = "Trends"
-
-# 지원하는 지역별 RSS URL
-FEEDS = {
-    "US": "https://trends.google.com/trending/rss?geo=US&hl=en",
-    "KR": "https://trends.google.com/trending/rss?geo=KR&hl=ko",
-}
-
-# 로컬에 저장할 경로
-DATA_DIR      = join(BASE_DIR, "data")
-TRENDS_CSV    = join(DATA_DIR, "trends.csv")
-KEYWORDS_CSV  = join(DATA_DIR, "keywords.csv")
-# ────────────────────────────────────────────────────────────
-
-def init_sheets():
-    """구글 시트 인증 후 워크시트 객체 반환"""
-    scope = [
-        "https://spreadsheets.google.com/feeds",
-        "https://www.googleapis.com/auth/drive",
+def fetch_trends():
+    params = {
+        "engine": "google_trends",
+        "type": "daily",   # 일간 트렌드
+        "hl": HL,
+        "geo": GEO,
+        "api_key": API_KEY
+    }
+    client = GoogleSearch(params)
+    data = client.get_dict()
+    # SerpApi 결과 구조에서 일일 트렌드 리스트 추출
+    items = data.get("daily_trends", {}).get("trendingSearches", [])
+    # 각 아이템의 title.query 값(없으면 title)
+    return [
+        item["title"].get("query", item["title"])
+        for item in items
     ]
-    creds = ServiceAccountCredentials.from_json_keyfile_name(
-        SERVICE_ACCOUNT_FILE,
-        scope
-    )
-    client = gspread.authorize(creds)
-    return client.open(SPREADSHEET_NAME).worksheet(WORKSHEET_NAME)
 
-def append_rss_to_sheet(sheet):
-    """FEEDS 딕셔너리의 RSS 데이터를 읽어 시트에 append"""
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-    for region, url in FEEDS.items():
-        data = feedparser.parse(url)
-        for entry in data.entries:
-            keyword = entry.title
-            traffic = entry.get("ht_approx_traffic", "")
-            sheet.append_row([region, now, keyword, traffic])
-    print("✅ RSS 트렌드를 Google Sheets에 기록 완료")
-
-def export_csv_from_sheet(sheet):
-    """시트 전체를 trends.csv로 덮어쓰고, keywords.csv를 생성"""
+def save_csv(keywords):
     os.makedirs(DATA_DIR, exist_ok=True)
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # 1) 전체 덮어쓰기
-    rows = sheet.get_all_values()
-    with open(TRENDS_CSV, "w", encoding="utf-8", newline="") as f:
+    # trends.csv: [timestamp, rank, keyword]
+    with open(TRENDS_CSV, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerows(rows)
-    print(f"✅ trends.csv 생성: {TRENDS_CSV}")
+        writer.writerow(["timestamp","rank","keyword"])
+        for idx, kw in enumerate(keywords, start=1):
+            writer.writerow([now, idx, kw])
 
-    # 2) 키워드 열만 추출
-    with open(TRENDS_CSV, "r", encoding="utf-8") as f_in, \
-         open(KEYWORDS_CSV, "w", encoding="utf-8", newline="") as f_out:
-        reader = csv.reader(f_in)
-        writer = csv.writer(f_out)
-        next(reader, None)  # 헤더 건너뛰기
-        for row in reader:
-            writer.writerow([row[2]])
-    print(f"✅ keywords.csv 생성: {KEYWORDS_CSV}")
+    # keywords.csv: 키워드 열만
+    with open(KEYWORDS_CSV, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        for kw in keywords:
+            writer.writerow([kw])
+
+    print("✅ SerpApi로 트렌드 수집 및 CSV 생성 완료")
 
 def main():
-    sheet = init_sheets()
-    append_rss_to_sheet(sheet)
-    export_csv_from_sheet(sheet)
+    kws = fetch_trends()
+    if not kws:
+        print("⚠️ 오늘의 트렌드를 불러오지 못했습니다.")
+    else:
+        save_csv(kws)
 
 if __name__ == "__main__":
     main()
