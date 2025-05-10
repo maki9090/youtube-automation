@@ -1,0 +1,22 @@
+{
+  "default": "gpt",
+  "providers": {
+    "gpt": {
+      "type": "openai",
+      "model": "gpt-4",
+      "api_key": "sk-여기에-발급받은-키-붙여넣기",
+      "api_key_env": "OPENAI_API_KEY"
+    },
+    "gpt35": {
+      "type": "openai",
+      "model": "gpt-3.5-turbo",
+      "api_key": "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",
+      "api_key_env": "OPENAI_API_KEY"
+    },
+    "gemini": {
+      "type": "google",
+      "model": "gemini-1.0",
+      "api_key_env": "GOOGLE_API_KEY"
+    }
+  }
+}

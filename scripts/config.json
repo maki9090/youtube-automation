@@ -1,0 +1,16 @@
+{
+  "data_dir": "data",
+  "files": {
+    "trends":         "trends.csv",
+    "keywords":       "keywords.csv",
+    "cluster_labels": "cluster_labels.csv",
+    "ideas":          "ideas.csv"
+  },
+  "output_shorts":    "output/shorts",
+  "thumb_dir":        "output/thumbnails",
+  "env": {
+    "openai":  "OPENAI_API_KEY",
+    "google":  "GOOGLE_API_KEY",
+    "youtube": "YOUTUBE_API_KEY"
+  }
+}

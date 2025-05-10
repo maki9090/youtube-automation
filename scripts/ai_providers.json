@@ -1,0 +1,15 @@
+{
+  "default": "gpt",
+  "providers": {
+    "gpt": {
+      "type": "openai",
+      "model": "gpt-4o-mini",
+      "api_key_env": "OPENAI_API_KEY"
+    },
+    "gemini": {
+      "type": "google",
+      "model": "gemini-1.0",
+      "api_key_env": "GOOGLE_API_KEY"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "google_service_account": "credentials/youtube-automation-459219-a1cbaf245a1d.json",
+  "sheets": {
+    "sheet_id": "1_et8_sAD6crei8EZtlzby6G8DymML5RIPpAccNZqSoc"
+  },
+  "youtube": {
+    "client_secrets_file": "credentials/service_account.json",
+    "channel_id": "UCkM2zeosCWXfco-DKB0z1fw"
+  },
+  "gemini_api": {
+    "api_key": "AIzaSyBcD9LeJDIsX1yiK6aH8TsitM__QcWEOII"
+  },
+  "ai_studio": {
+    "api_key": "AIzaSyD8p0hOwhplQSTPZiw8BWF547OKk_4Qkbs"
+  }
+}
