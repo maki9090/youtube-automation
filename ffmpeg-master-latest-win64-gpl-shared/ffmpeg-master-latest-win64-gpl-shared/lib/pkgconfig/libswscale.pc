@@ -1,13 +1,3 @@
-prefix=${pcfiledir}/../..
-exec_prefix=${prefix}
-libdir=${prefix}/lib
-includedir=${prefix}/include
-
-Name: libswscale
-Description: FFmpeg image rescaling library
-Version: 9.0.100
-Requires: 
-Requires.private: libavutil >= 60.2.100
-Conflicts:
-Libs: -L${libdir}  -lswscale 
-Cflags: -I${includedir}
+version https://git-lfs.github.com/spec/v1
+oid sha256:29e25ba0b8f2796d0c63c239e9c829cad14af90a059810da8dfc33316ed46da1
+size 293

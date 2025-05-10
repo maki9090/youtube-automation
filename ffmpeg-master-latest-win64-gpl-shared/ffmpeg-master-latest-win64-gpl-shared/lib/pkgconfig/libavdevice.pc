@@ -1,13 +1,3 @@
-prefix=${pcfiledir}/../..
-exec_prefix=${prefix}
-libdir=${prefix}/lib
-includedir=${prefix}/include
-
-Name: libavdevice
-Description: FFmpeg device handling library
-Version: 62.0.100
-Requires: 
-Requires.private: libavfilter >= 11.0.100, libswscale >= 9.0.100, libavformat >= 62.0.102, libavcodec >= 62.3.101, libswresample >= 6.0.100, libavutil >= 60.2.100
-Conflicts:
-Libs: -L${libdir}  -lavdevice 
-Cflags: -I${includedir}
+version https://git-lfs.github.com/spec/v1
+oid sha256:d76c9f710b89a3f63cdcc6479e920bf8e55977168ed5cd0d2938013cf0b39638
+size 419
